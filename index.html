@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>ECG & Elettroliti — Variante statica</title>
+<title>ECG, elettroliti e farmaci — Simulatore</title>
 <style>
   :root{
     --bg:#090d0e;
@@ -106,15 +106,16 @@
   }
 
   /* TABS */
-  .tabs{display:flex;gap:8px;margin-bottom:14px;}
+  .tabs{display:flex;gap:6px;margin-bottom:14px;}
   .tab{
     flex:1;
+    min-width:0;
+    padding:11px 2px;
     background:var(--panel);
     border:1px solid var(--line);
     color:var(--muted);
-    padding:11px 8px;
     border-radius:12px;
-    font-family:var(--sans);
+    font-family:var(--mono);
     font-weight:600;
     font-size:14px;
     cursor:pointer;
@@ -171,6 +172,14 @@
   .range-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--muted-2);margin-bottom:14px;}
   .range-labels .norm{color:var(--muted);}
 
+  .sex-toggle{display:flex;gap:6px;margin:2px 0 10px;}
+  .sexBtn{
+    flex:1; padding:7px; border-radius:9px;
+    background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
+    font-family:var(--mono); font-size:12px; cursor:pointer; transition:all .15s ease;
+  }
+  .sexBtn.active{background:rgba(45,212,174,0.18);border-color:rgba(45,212,174,0.5);color:var(--text);}
+
   .status-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
   .status-title{font-weight:700;font-size:14.5px;}
@@ -188,9 +197,9 @@
 <div class="app">
 
   <header>
-    <div class="eyebrow"><span class="dot"></span>Variante statica — morphing fluido</div>
-    <h1>ECG e alterazioni elettrolitiche</h1>
-    <p>Il tracciato resta fermo sullo schermo: muovendo il cursore la sua forma si trasforma con una transizione morbida, senza scorrimento.</p>
+    <div class="eyebrow"><span class="dot"></span>Simulatore interattivo</div>
+    <h1>ECG, elettroliti e farmaci</h1>
+    <p>Simula in tempo reale l'effetto di elettroliti e farmaci comuni sulla morfologia del battito: il tracciato resta fermo e si trasforma con una transizione morbida mentre sposti i cursori.</p>
   </header>
 
   <div class="monitor">
@@ -209,9 +218,11 @@
   </div>
 
   <div class="tabs">
-    <button class="tab active" data-ion="k">Potassio <span class="sym">K⁺</span></button>
-    <button class="tab" data-ion="ca">Calcio <span class="sym">Ca²⁺</span></button>
-    <button class="tab" data-ion="mg">Magnesio <span class="sym">Mg²⁺</span></button>
+    <button class="tab active" data-ion="k">K⁺</button>
+    <button class="tab" data-ion="ca">Ca²⁺</button>
+    <button class="tab" data-ion="mg">Mg²⁺</button>
+    <button class="tab" data-ion="dig">Dig</button>
+    <button class="tab" data-ion="qt">QT</button>
   </div>
 
   <div class="panel">
@@ -220,6 +231,10 @@
       <span class="ion-value"><span id="panelValue">4.2</span><span class="u" id="panelUnit">mEq/L</span></span>
     </div>
     <input type="range" id="slider" min="2.0" max="9.0" step="0.1" value="4.2">
+    <div class="sex-toggle" id="sexToggle" style="display:none;">
+      <button class="sexBtn active" data-sex="M">Uomo</button>
+      <button class="sexBtn" data-sex="F">Donna</button>
+    </div>
     <div class="range-labels">
       <span id="lblMin">2.0</span>
       <span class="norm" id="lblNorm">normale 3.5–5.0</span>
@@ -240,6 +255,7 @@
 
   <footer>
     Strumento didattico con proporzioni semplificate, a scopo illustrativo — non calibrato su un ECG reale a 12 derivazioni e non utilizzabile a fini diagnostici.
+    <div style="margin-top:10px;letter-spacing:.08em;text-transform:uppercase;font-size:10px;color:var(--muted-2);">Created by Aurex</div>
   </footer>
 </div>
 
@@ -342,10 +358,70 @@
         {lo:7.5,hi:99, sev:'critica', title:'Ipermagnesiemia severa', color:'var(--red)', desc:'QRS molto largo, bradicardia marcata, rischio di blocco AV completo/arresto.'},
       ]); },
       refHTML:`<b>&lt;1.0</b> QT lungo, rischio torsione di punta · <b>1.0–1.5</b> lieve QT lungo · <b>1.5–2.5</b> normale · <b>2.5–5.0</b> PR lungo · <b>5.0–7.5</b> QRS largo, bradicardia · <b>&gt;7.5</b> rischio blocco AV/arresto`
+    },
+    dig: {
+      name:'Digossina', symbol:'Dig', unit:'ng/mL',
+      min:0, max:5, step:0.1, def:1.2, normalMin:0.5, normalMax:2.0,
+      params(v){
+        const p = {Pamp:0.16, PRext:0, QRSwidth:90, QRSscale:1, Ramp:1.2, Tamp:0.30, Twidth:55, STlevel:0, STlen:80, Uamp:0, HR:75};
+        const s = 1-Math.exp(-v/1.3); // effetto digitalico: presente già a livelli terapeutici
+        p.STlevel = -0.02 - s*0.13;
+        p.STlen = 80 - s*38;
+        p.Tamp = 0.30 - s*0.46;
+        const tox = Math.max(0, v-1.8);
+        p.PRext = tox*22;
+        p.HR = 75 - tox*9;
+        return p;
+      },
+      band(v){ return bandFromRanges(v,[
+        {lo:-9,hi:0.5, sev:'normale', title:'Sottosoglia', color:'var(--green)', desc:'Livello sub-terapeutico: effetto elettrocardiografico minimo o assente.'},
+        {lo:0.5,hi:2.01, sev:'normale', title:'Range terapeutico', color:'var(--green)', desc:'Tipico "effetto digitalico": sottoslivellamento ST a scodella, T appiattita, QT accorciato — reperto atteso, non patologico.'},
+        {lo:2.01,hi:2.5, sev:'attenzione', title:'Possibile tossicità', color:'var(--amber)', desc:"Effetto digitalico più marcato; a questi livelli va sempre sospettata la tossicità, specie nell'anziano con funzione renale ridotta."},
+        {lo:2.5,hi:3.5, sev:'attenzione', title:'Tossicità digitalica', color:'var(--amber)', desc:'T sempre più invertita, PR in allungamento, tendenza alla bradicardia: quadro suggestivo di intossicazione.'},
+        {lo:3.5,hi:99, sev:'critica', title:'Tossicità severa', color:'var(--red)', desc:'Rischio elevato di blocco AV avanzato e bradiaritmie potenzialmente fatali.'},
+      ]); },
+      refHTML:`<b>&lt;0.5</b> nessun effetto evidente · <b>0.5–2.0</b> effetto digitalico tipico (terapeutico) · <b>2.0–2.5</b> possibile tossicità · <b>2.5–3.5</b> tossicità digitalica · <b>&gt;3.5</b> tossicità severa, rischio blocco AV`
+    },
+    qt: {
+      name:'Intervallo QTc', symbol:'QTc', unit:'ms',
+      min:340, max:600, step:5, def:400, normalMin:340, normalMax:430,
+      thresholds:{ M:{normal:430, borderline:450}, F:{normal:450, borderline:470} },
+      params(qtc){
+        const p = {Pamp:0.16, PRext:0, QRSwidth:90, QRSscale:1, Ramp:1.2, Tamp:0.30, Twidth:55, STlevel:0, STlen:80, Uamp:0, HR:60};
+        p.STlen = Math.max(qtc - 200, 10); // 200 = QRSwidth(90) + 2×Twidth(55), riferimento a QTc≈HR 60 (Bazett)
+        if(qtc>500){ const t=Math.min((qtc-500)/100,1); p.Uamp = t*0.14; }
+        return p;
+      },
+      band(qtc, sex){
+        const th = this.thresholds[sex||'M'];
+        const sexLabel = (sex==='F') ? 'sesso femminile' : 'sesso maschile';
+        if(qtc<th.normal) return {title:'QTc normale', color:'var(--green)', desc:`QTc nella norma per il ${sexLabel} (soglia ${th.normal} ms).`};
+        if(qtc<th.borderline) return {title:'QTc borderline', color:'var(--amber)', desc:`QTc ai limiti superiori (${th.normal}–${th.borderline} ms): monitorare elettroliti e farmaci concomitanti.`};
+        if(qtc<500) return {title:'QTc lungo', color:'var(--amber)', desc:`QTc oltre la soglia patologica per il ${sexLabel} (>${th.borderline} ms): rivalutare farmaci QT-prolungante ed elettroliti.`};
+        return {title:'QTc molto lungo — rischio critico', color:'var(--red)', desc:'QTc >500 ms: rischio elevato di torsione di punta, indipendentemente dal sesso.'};
+      },
+      refHTML(sex){
+        const th = this.thresholds[sex||'M'];
+        const other = this.thresholds[sex==='F'?'M':'F'];
+        const sexLbl = sex==='F'?'donna':'uomo';
+        const otherLbl = sex==='F'?'uomo':'donna';
+        return `<b>Soglie QTc — ${sexLbl}</b>: normale &lt;${th.normal} ms · borderline ${th.normal}–${th.borderline} ms · lungo &gt;${th.borderline} ms · rischio critico &gt;500 ms (entrambi i sessi)<br>
+        <span style="opacity:.7">Per ${otherLbl}: normale &lt;${other.normal} ms, lungo &gt;${other.borderline} ms.</span>
+        <br><br>
+        <b>Farmaci che allungano il QT, per classe</b><br>
+        <b>Antiaritmici IA/III</b>: chinidina, procainamide, disopiramide, amiodarone, sotalolo, dofetilide<br>
+        <b>Macrolidi</b>: eritromicina, claritromicina, azitromicina<br>
+        <b>Fluorochinoloni</b>: ciprofloxacina, levofloxacina, moxifloxacina<br>
+        <b>Antipsicotici</b>: aloperidolo, clorpromazina, quetiapina, risperidone, ziprasidone<br>
+        <b>Antidepressivi</b>: amitriptilina, citalopram, escitalopram, venlafaxina<br>
+        <b>Antiemetici</b>: ondansetron, domperidone<br>
+        <b>Antifungini azolici</b>: fluconazolo, voriconazolo<br>
+        <b>Oppioidi</b>: metadone`;
+      }
     }
   };
 
-  const values = { k: ION.k.def, ca: ION.ca.def, mg: ION.mg.def };
+  const values = { k: ION.k.def, ca: ION.ca.def, mg: ION.mg.def, dig: ION.dig.def, qt: ION.qt.def };
   let currentIon = 'k';
 
   // ---------- WAVEFORM MATH ----------
@@ -502,20 +578,27 @@
     statusDesc: document.getElementById('statusDesc'),
     refTable: document.getElementById('refTable'),
     refSummary: document.querySelector('summary'),
+    sexToggle: document.getElementById('sexToggle'),
+    sexBtns: document.querySelectorAll('.sexBtn'),
   };
+
+  let currentSex = 'M';
 
   function fmt(v){ return (Math.round(v*10)/10).toFixed(1); }
 
   function updateSliderTrack(cfg){
-    const pct1 = ((cfg.normalMin-cfg.min)/(cfg.max-cfg.min))*100;
-    const pct2 = ((cfg.normalMax-cfg.min)/(cfg.max-cfg.min))*100;
+    let nMin = cfg.normalMin, nMax = cfg.normalMax;
+    if(currentIon==='qt'){ nMax = cfg.thresholds[currentSex].normal; }
+    const pct1 = ((nMin-cfg.min)/(cfg.max-cfg.min))*100;
+    const pct2 = ((nMax-cfg.min)/(cfg.max-cfg.min))*100;
     el.slider.style.background = `linear-gradient(90deg, #232c2e ${pct1}%, rgba(59,233,166,0.30) ${pct1}%, rgba(59,233,166,0.30) ${pct2}%, #232c2e ${pct2}%)`;
   }
 
   function refreshUI(){
     const cfg = ION[currentIon];
     const val = values[currentIon];
-    const b = cfg.band(val);
+    const isQt = currentIon==='qt';
+    const b = isQt ? cfg.band(val, currentSex) : cfg.band(val);
 
     el.ionLabel.textContent = cfg.symbol;
     el.ionValue.textContent = fmt(val);
@@ -531,15 +614,20 @@
 
     el.lblMin.textContent = fmt(cfg.min);
     el.lblMax.textContent = fmt(cfg.max);
-    el.lblNorm.textContent = `normale ${fmt(cfg.normalMin)}–${fmt(cfg.normalMax)}`;
+    el.lblNorm.textContent = isQt
+      ? `normale <${cfg.thresholds[currentSex].normal}`
+      : `normale ${fmt(cfg.normalMin)}–${fmt(cfg.normalMax)}`;
 
     el.statusDot.style.background = colorVar;
     el.statusTitle.textContent = b.title;
     el.statusTitle.style.color = colorVar;
     el.statusDesc.textContent = b.desc;
 
-    el.refTable.innerHTML = cfg.refHTML;
+    el.refTable.innerHTML = isQt ? cfg.refHTML(currentSex) : cfg.refHTML;
     el.refSummary.textContent = `Soglie di riferimento — ${cfg.name}`;
+
+    el.sexToggle.style.display = isQt ? 'flex' : 'none';
+    el.sexBtns.forEach(btn=> btn.classList.toggle('active', btn.dataset.sex===currentSex));
 
     updateSliderTrack(cfg);
   }
@@ -554,6 +642,10 @@
   }
 
   el.tabs.forEach(t=> t.addEventListener('click', ()=> switchIon(t.dataset.ion)));
+  el.sexBtns.forEach(btn=> btn.addEventListener('click', ()=>{
+    currentSex = btn.dataset.sex;
+    refreshUI();
+  }));
   el.slider.addEventListener('input', ()=>{
     values[currentIon] = parseFloat(el.slider.value);
     refreshUI();
