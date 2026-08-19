@@ -135,10 +135,10 @@
   }
   .tab .sym{font-family:var(--mono);}
   .tab.active{
-    background: linear-gradient(180deg, rgba(45,212,174,0.16), rgba(45,212,174,0.05));
-    border-color: rgba(45,212,174,0.45);
+    background: linear-gradient(180deg, rgba(45,212,174,0.32), rgba(45,212,174,0.14));
+    border-color: var(--accent);
     color:var(--text);
-    box-shadow: 0 0 0 1px rgba(45,212,174,0.12) inset;
+    box-shadow: 0 0 0 1px rgba(45,212,174,0.35) inset, 0 0 14px rgba(45,212,174,0.4);
   }
 
   /* CONTROL PANEL */
@@ -189,7 +189,7 @@
     background:var(--panel-2); border:1px solid var(--line); color:var(--muted);
     font-family:var(--mono); font-size:12px; cursor:pointer; transition:all .15s ease;
   }
-  .sexBtn.active{background:rgba(45,212,174,0.18);border-color:rgba(45,212,174,0.5);color:var(--text);}
+  .sexBtn.active{background:rgba(45,212,174,0.30);border-color:var(--accent);color:var(--text);box-shadow:0 0 10px rgba(45,212,174,0.35);}
 
   .status-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
   .status-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
